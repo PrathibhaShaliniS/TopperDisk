@@ -9,7 +9,9 @@
   :root { --navy:#0b3a6e; --blue:#0a7ad0; --teal:#3fb3b3; --green:#1a9b55; --red:#b3261e; --ink:#1c2b3a; --mut:#5d7080; --line:#d5e3ea; }
   * { box-sizing:border-box; margin:0; }
   body { min-height:100vh; font-family:"Poppins",system-ui,sans-serif; color:var(--ink); background:linear-gradient(#eaf4fb,#f5f9fd) fixed; }
-  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:url("background.jpg") right bottom / auto calc(100% - 64px) no-repeat; }
+  /* Background illustration (keep background2.png in the same folder as this file) */
+  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:url("background2.png") right bottom / min(640px,75vw) auto no-repeat; }
+  @media (max-width:700px) { body::before { background-position:center bottom; opacity:.35; } }
   header { display:flex; align-items:center; gap:12px; padding:10px 5%; background:rgba(255,255,255,.9); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
   header img { height:44px; border-radius:50%; } header b { color:var(--navy); flex:1; }
   .wrap { width:min(680px,100%); padding:28px 5% 60px; }
@@ -24,11 +26,13 @@
   .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .btn { padding:10px 18px; border-radius:10px; border:1.5px solid var(--navy); background:var(--navy); color:#fff; font:500 14px "Poppins"; cursor:pointer; }
   .btn:hover { background:var(--blue); border-color:var(--blue); } .btn.alt { background:#fff; color:var(--navy); } .btn.sm { padding:6px 12px; font-size:13px; }
+  .btn:disabled { opacity:.6; cursor:wait; }
   .ver { display:inline-block; font-size:13px; font-weight:600; padding:4px 12px; border-radius:99px; background:#e5f6ec; color:var(--green); border:1px solid #bfe6cf; }
   .bad { background:#fdeceb; border:1px solid #f1b9b5; color:var(--red); border-radius:12px; padding:12px 14px; font-size:14px; margin-top:12px; }
   .note { background:#e8f3fd; border:1px solid #b9d6f2; border-radius:10px; padding:10px 14px; font-size:13px; margin:12px 0; }
   .steps { list-style:none; padding:0; display:grid; gap:6px; margin-top:12px; } .steps li { padding:9px 14px; border-radius:10px; background:#fff; border:1px solid var(--line); opacity:.5; font-size:14px; }
   .steps li.done { opacity:1; border-color:var(--green); color:var(--green); }
+  .steps li.fail { opacity:1; border-color:var(--red); color:var(--red); }
   .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
   .gal img { width:100%; height:120px; object-fit:cover; border-radius:10px; border:1px solid var(--line); }
   .ans { color:var(--green); } [hidden] { display:none !important; } :focus-visible { outline:3px solid var(--teal); outline-offset:2px; }
@@ -38,7 +42,7 @@
 <header><img src="logo.jpg" alt="TopperDisk"><b>TopperDisk · Mentor</b><button class="btn alt sm" id="logout">Logout</button></header>
 <div class="wrap">
   <h1 id="hi">Welcome!</h1>
-  <p class="sub">Verify your achievement, then share notes, guidance and answers. Prototype with demo checks.</p>
+  <p class="sub">Verify your achievement, then share notes, guidance and answers.</p>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-t="home" aria-selected="true">Home</button>
     <button class="tab" role="tab" data-t="notes" aria-selected="false">Notes</button>
@@ -62,20 +66,62 @@
   const setD = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch { alert('Browser storage is full. Delete some notes first.'); return false; } };
   $('#hi').textContent = 'Welcome, ' + acct.name + '!';
 
-  /* ---- Verification: DEMO checks only (file type, size, image resolution).
-     It cannot tell a real rank card from a fake one. To make it real, replace the body of
-     this function with a call to your backend, which calls an OCR/AI service. ---- */
-  async function verifyRankCard(file, details) {
-    await sleep(600);
+  /* ---- Verification: reads the text on the uploaded rank card (OCR for images, text/OCR for PDFs)
+     and checks that it really looks like a rank/score card AND shows the rank the mentor entered.
+     OCR libraries load from a CDN, so an internet connection is needed. ---- */
+  const loadScript = (src) => new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.onload = res;
+    s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s);
+  });
+
+  async function ocr(src) {
+    if (!window.Tesseract) await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    const { data } = await Tesseract.recognize(src, 'eng');
+    return data.text || '';
+  }
+
+  async function extractText(file) {
+    if (/^image\//.test(file.type)) return ocr(file);
+    if (!window.pdfjsLib) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    let text = '';
+    for (let p = 1; p <= Math.min(3, pdf.numPages); p++) {
+      const page = await pdf.getPage(p);
+      text += (await page.getTextContent()).items.map(i => i.str).join(' ') + '\n';
+    }
+    if (text.trim().length < 30) {            // scanned PDF -> OCR the first page
+      const page = await pdf.getPage(1), vp = page.getViewport({ scale: 2 });
+      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      text = await ocr(c);
+    }
+    return text;
+  }
+
+  async function verifyRankCard(file, details, onStep) {
     const why = [];
     if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) why.push('The file must be a PDF, JPG or PNG.');
     if (file.size < 20 * 1024) why.push('The file is too small to be a readable rank card.');
     if (file.size > 5 * 1024 * 1024) why.push('The file is larger than 5 MB.');
-    if (/^image\//.test(file.type)) {
-      const dim = await new Promise(res => { const i = new Image(); i.onload = () => res([i.width, i.height]); i.onerror = () => res(null); i.src = URL.createObjectURL(file); });
-      if (!dim) why.push('The image could not be opened.');
-      else if (dim[0] < 400 || dim[1] < 300) why.push('The image resolution is too low to read.');
-    }
+    if (why.length) return { ok: false, reasons: why };
+
+    onStep(1);                                  // Uploading done
+    let text;
+    try { text = await extractText(file); }
+    catch (e) { return { ok: false, reasons: ['The document could not be read. Check your internet connection or upload a clearer file.'] }; }
+    onStep(2);                                  // Document analysis done
+
+    const clean = text.replace(/(\d),(?=\d)/g, '$1');            // 12,345 -> 12345
+    const hasKeyword = /\b(rank|air|score|scorecard|score card|marks|percentile|result)\b/i.test(clean);
+    const hasNumbers = /\d{2,}/.test(clean);
+    const rankShown = new RegExp('(^|\\D)' + String(details.rank).trim() + '(\\D|$)').test(clean);
+    onStep(3);                                  // Information extraction done
+
+    if (!hasKeyword || !hasNumbers) why.push('This does not look like a rank card. No rank or score was found in the document.');
+    else if (!rankShown) why.push('The rank you entered (' + details.rank + ') is not shown on the document.');
     return { ok: why.length === 0, reasons: why };
   }
 
@@ -85,34 +131,39 @@
     if (d.verified) {
       $('#home').innerHTML = `<div class="card"><span class="ver">✓ VERIFIED MENTOR</span>
         <h3 style="margin-top:10px">Your achievement has been verified.</h3>
-        <p>${esc(d.exam)} · ${esc(d.year)} · Rank ${esc(d.rank)} (as entered, demo check)</p>
+        <p>${esc(d.exam)} · ${esc(d.year)} · Rank ${esc(d.rank)}</p>
         <p style="margin-top:8px">You are now visible to students. Upload notes, share guidance and answer questions.</p></div>`;
       return;
     }
     $('#home').innerHTML = `<div class="card"><h3>Verify your achievement</h3>
-      <p>Upload your rank card (PDF, JPG or PNG, up to 5 MB) and click Verify.</p>
+      <p>Upload a clear rank card or score card (PDF, JPG or PNG, up to 5 MB) that shows your rank, then click Verify.</p>
       <form class="f" id="vForm">
         <input id="vx" required placeholder="Exam" value="${esc(acct.exam || '')}">
         <div class="two"><input id="vy" required type="number" placeholder="Year" min="2000" max="2100"><input id="vr" required type="number" placeholder="Rank" min="1"></div>
         <input id="vf" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
-        <button class="btn">Upload &amp; Verify</button></form>
+        <button class="btn" id="vbtn">Upload &amp; Verify</button></form>
       <ul class="steps" id="steps" hidden>${['Uploading','Document Analysis','Information Extraction','Verification'].map(s => `<li>${s}</li>`).join('')}</ul>
-      <div id="vres"></div>
-      <div class="note">Prototype: this runs simple file checks only. It does not use real AI and cannot confirm that a rank card is genuine.</div></div>`;
+      <div id="vres"></div></div>`;
   }
 
   async function runVerify() {
     const file = $('#vf').files[0], d = getD();
     if (!file) return;
-    const li = [...document.querySelectorAll('#steps li')];
+    const li = [...document.querySelectorAll('#steps li')], btn = $('#vbtn');
+    const mark = (n) => li.forEach((l, i) => { if (i < n) l.className = 'done'; });
     $('#steps').hidden = false; li.forEach(l => l.className = ''); $('#vres').innerHTML = '';
-    const r = await verifyRankCard(file, {});
-    for (const l of li) { await sleep(500); l.className = 'done'; }
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    const details = { exam: $('#vx').value.trim(), year: $('#vy').value, rank: $('#vr').value };
+    const r = await verifyRankCard(file, details, mark);
+    btn.disabled = false; btn.textContent = 'Upload & Verify';
     if (r.ok) {
-      Object.assign(d, { verified: true, exam: $('#vx').value.trim(), year: $('#vy').value, rank: $('#vr').value });
+      mark(4);
+      Object.assign(d, { verified: true, ...details });
+      await sleep(400);
       if (setD(d)) { showHome(); lockCheck(); }
     } else {
-      $('#vres').innerHTML = `<div class="bad"><b>Verification failed. Please upload a proper document.</b><br>${r.reasons.map(esc).join('<br>')}</div>`;
+      li[3].className = 'fail';
+      $('#vres').innerHTML = `<div class="bad"><b>Invalid details. Please upload a valid rank card that shows your rank or score.</b><br>${r.reasons.map(esc).join('<br>')}</div>`;
     }
   }
 
