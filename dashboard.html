@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TopperDisk – Student Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#0b3a6e; --blue:#0a7ad0; --teal:#3fb3b3; --green:#1a9b55; --ink:#1c2b3a; --mut:#5d7080; --line:#d5e3ea; }
+  * { box-sizing:border-box; margin:0; }
+  body { min-height:100vh; font-family:"Poppins",system-ui,sans-serif; color:var(--ink);
+    background:#eaf3fa url("background.jpg") right bottom / cover no-repeat fixed; }
+  header { display:flex; align-items:center; gap:12px; padding:10px 5%; background:rgba(255,255,255,.88); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  header img { height:44px; border-radius:50%; }
+  header b { color:var(--navy); flex:1; }
+  .out { border:1.5px solid var(--navy); background:#fff; color:var(--navy); padding:7px 16px; border-radius:10px; font:500 13px "Poppins"; cursor:pointer; }
+  .wrap { width:min(680px,100%); padding:28px 5% 60px; }
+  h1 { font-size:clamp(22px,4vw,30px); color:var(--navy); }
+  .sub { color:var(--mut); font-size:14px; margin:4px 0 16px; }
+  .tabs { display:flex; gap:6px; background:rgba(228,238,243,.9); padding:4px; border-radius:12px; margin-bottom:16px; }
+  .tab { flex:1; padding:10px 6px; border:0; border-radius:9px; background:none; font:500 14px "Poppins"; color:#47606f; cursor:pointer; }
+  .tab[aria-selected="true"] { background:#fff; color:var(--navy); box-shadow:0 1px 6px rgba(11,58,110,.15); }
+  .card { background:rgba(255,255,255,.93); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 12px rgba(11,58,110,.08); }
+  .card h3 { font-size:17px; color:var(--navy); }
+  .card p { font-size:14px; color:var(--mut); }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .av { width:52px; height:52px; border-radius:50%; background:var(--navy); color:#fff; display:grid; place-items:center; font-weight:600; font-size:20px; }
+  .ver { font-size:12px; font-weight:600; padding:3px 10px; border-radius:99px; background:#e5f6ec; color:var(--green); border:1px solid #bfe6cf; }
+  .info { margin:10px 0; display:grid; grid-template-columns:auto 1fr; gap:2px 12px; font-size:14px; }
+  .info span:nth-child(odd) { color:var(--mut); }
+  .btn { padding:9px 18px; border-radius:10px; border:1.5px solid var(--navy); background:var(--navy); color:#fff; font:500 14px "Poppins"; cursor:pointer; }
+  .btn:hover { background:var(--blue); border-color:var(--blue); }
+  .btn.alt { background:#fff; color:var(--navy); }
+  .banner { background:#e8f3fd; border:1px solid #b9d6f2; border-radius:12px; padding:10px 14px; font-size:14px; margin-bottom:14px; }
+  select,textarea { width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:10px; font:14px "Poppins"; margin-bottom:10px; }
+  .ans { color:var(--green); }
+  [hidden] { display:none !important; }
+  :focus-visible { outline:3px solid var(--teal); outline-offset:2px; }
+  @media(max-width:760px){ body { background-attachment:scroll; } .wrap { background:rgba(255,255,255,.55); } }
+</style>
+</head>
+<body>
+<header><img src="logo.jpg" alt="TopperDisk"><b>TopperDisk</b><button class="out" id="logout">Logout</button></header>
+
+<div class="wrap">
+  <h1 id="hi">Welcome!</h1>
+  <p class="sub">Choose a mentor, ask questions and use their resources. Demo data only.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-t="mentors" aria-selected="true">Choose Mentor</button>
+    <button class="tab" role="tab" data-t="qa" aria-selected="false">Q &amp; A</button>
+    <button class="tab" role="tab" data-t="res" aria-selected="false">Resources</button>
+  </div>
+
+  <section id="mentors"></section>
+  <section id="qa" hidden></section>
+  <section id="res" hidden></section>
+</div>
+
+<script>
+  // ---- Sign-in check (prototype: not real authentication) ----
+  const user = localStorage.getItem('td_student');
+  if (!user) location.replace('index.html');
+
+  // ---- Sample data (replace with backend calls later) ----
+  const MENTORS = [
+    { id:1, name:'Priya Sharma', exam:'JEE Advanced', year:2025, rank:'AIR 1,245', qual:'Qualified JEE Advanced, B.Tech (CSE) student', subj:'Physics, Mathematics' },
+    { id:2, name:'Arjun Verma',  exam:'NEET',         year:2025, rank:'AIR 842',   qual:'Qualified NEET, MBBS student',                  subj:'Biology, Chemistry' },
+    { id:3, name:'Neha Gupta',   exam:'UPSC CSE',     year:2024, rank:'AIR 97',    qual:'Qualified UPSC Civil Services',                 subj:'Polity, Essay' },
+    { id:4, name:'Rahul Singh',  exam:'GATE',         year:2025, rank:'AIR 63',    qual:'Qualified GATE (CSE), M.Tech student',          subj:'Algorithms, OS' }
+  ];
+  const RES = [
+    { t:'Physics Formula Sheet', by:1, d:'One-page formulas for mechanics and electricity.' },
+    { t:'NEET 6-Month Study Plan', by:2, d:'Week-by-week plan with revision slots.' },
+    { t:'UPSC Answer-Writing Tips', by:3, d:'Structure, time limits and common mistakes.' },
+    { t:'GATE OS Previous-Year Questions', by:4, d:'Topic-wise questions with solutions.' }
+  ];
+  const SEED_Q = [{ mentor:1, q:'How did you prepare for Mathematics?', a:'Solve 20 problems daily and review every mistake.' }];
+
+  // ---- Helpers ----
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const mentor = (id) => MENTORS.find(m => m.id == id);
+  const getQs = () => JSON.parse(localStorage.getItem('td_questions') || JSON.stringify(SEED_Q));
+  const setQs = (q) => localStorage.setItem('td_questions', JSON.stringify(q));
+  let chosen = +(localStorage.getItem('td_mentor') || 0);
+
+  $('#hi').textContent = 'Welcome, ' + user + '!';
+
+  // ---- Renderers ----
+  function showMentors() {
+    $('#mentors').innerHTML = MENTORS.map(m => `
+      <div class="card">
+        <div class="row"><div class="av">${m.name[0]}</div>
+          <div><h3>${m.name}</h3><span class="ver">✓ Verified Mentor</span></div></div>
+        <div class="info"><span>Exam</span><span>${m.exam} (${m.year})</span>
+          <span>Rank</span><span>${m.rank}</span>
+          <span>Qualification</span><span>${m.qual}</span>
+          <span>Subjects</span><span>${m.subj}</span></div>
+        <button class="btn ${chosen == m.id ? '' : 'alt'}" data-pick="${m.id}">${chosen == m.id ? '✓ Your mentor' : 'Choose this mentor'}</button>
+      </div>`).join('');
+  }
+
+  function showQA() {
+    const qs = getQs();
+    $('#qa').innerHTML = `
+      ${chosen ? `<div class="banner">Your mentor: <b>${mentor(chosen).name}</b></div>` : ''}
+      <form class="card" id="askForm">
+        <h3 style="margin-bottom:10px">Ask a question</h3>
+        <select id="qm">${MENTORS.map(m => `<option value="${m.id}" ${m.id == chosen ? 'selected' : ''}>${m.name} · ${m.exam}</option>`).join('')}</select>
+        <textarea id="qt" rows="3" required placeholder="Type your question"></textarea>
+        <button class="btn">Post Question</button>
+      </form>
+      ${qs.slice().reverse().map(x => `<div class="card"><h3>${esc(x.q)}</h3><p>Asked to ${mentor(x.mentor).name}</p>
+        <p class="${x.a ? 'ans' : ''}">${x.a ? 'Answer: ' + esc(x.a) : 'Waiting for the mentor to answer'}</p></div>`).join('')}`;
+  }
+
+  function showRes() {
+    $('#res').innerHTML = RES.map((r, i) => `
+      <div class="card"><h3>${r.t}</h3>
+        <p>Shared by ${mentor(r.by).name} <span class="ver">✓ Verified</span></p>
+        <p style="margin:6px 0 10px">${r.d}</p>
+        <button class="btn alt" data-dl="${i}">Download</button></div>`).join('');
+  }
+
+  // ---- Events ----
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
+    ['mentors', 'qa', 'res'].forEach(id => $('#' + id).hidden = id !== b.dataset.t);
+    if (b.dataset.t === 'qa') showQA();
+  });
+
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.dataset.pick) { chosen = +t.dataset.pick; localStorage.setItem('td_mentor', chosen); showMentors(); }
+    if (t.dataset.dl) {
+      const r = RES[t.dataset.dl], a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([r.t + '\n\n' + r.d + '\n\n(Demo file)'], { type:'text/plain' }));
+      a.download = r.t.replace(/\W+/g, '_') + '.txt'; a.click();
+    }
+  });
+
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'askForm') return;
+    e.preventDefault();
+    const qs = getQs();
+    qs.push({ mentor: +$('#qm').value, q: $('#qt').value.trim(), a: '' });
+    setQs(qs); showQA();
+  });
+
+  $('#logout').onclick = () => { localStorage.removeItem('td_student'); location.href = 'index.html'; };
+
+  showMentors(); showQA(); showRes();
+</script>
+</body>
+</html>
