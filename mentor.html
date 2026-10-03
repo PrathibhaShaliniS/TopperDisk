@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TopperDisk – Mentor Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#0b3a6e; --blue:#0a7ad0; --teal:#3fb3b3; --green:#1a9b55; --red:#b3261e; --ink:#1c2b3a; --mut:#5d7080; --line:#d5e3ea; }
+  * { box-sizing:border-box; margin:0; }
+  body { min-height:100vh; font-family:"Poppins",system-ui,sans-serif; color:var(--ink); background:linear-gradient(#eaf4fb,#f5f9fd) fixed; }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:url("background.jpg") right bottom / auto calc(100% - 64px) no-repeat; }
+  header { display:flex; align-items:center; gap:12px; padding:10px 5%; background:rgba(255,255,255,.9); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  header img { height:44px; border-radius:50%; } header b { color:var(--navy); flex:1; }
+  .wrap { width:min(680px,100%); padding:28px 5% 60px; }
+  h1 { font-size:clamp(22px,4vw,30px); color:var(--navy); } .sub { color:var(--mut); font-size:14px; margin:4px 0 16px; }
+  .tabs { display:flex; gap:6px; background:rgba(228,238,243,.9); padding:4px; border-radius:12px; margin-bottom:16px; }
+  .tab { flex:1; padding:10px 4px; border:0; border-radius:9px; background:none; font:500 13px "Poppins"; color:#47606f; cursor:pointer; }
+  .tab[aria-selected="true"] { background:#fff; color:var(--navy); box-shadow:0 1px 6px rgba(11,58,110,.15); }
+  .card { background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 12px rgba(11,58,110,.08); }
+  .card h3 { font-size:17px; color:var(--navy); margin-bottom:4px; } .card p { font-size:14px; color:var(--mut); }
+  .f { display:grid; gap:10px; margin-top:10px; }
+  input,select,textarea { width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:10px; font:14px "Poppins"; background:#fff; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn { padding:10px 18px; border-radius:10px; border:1.5px solid var(--navy); background:var(--navy); color:#fff; font:500 14px "Poppins"; cursor:pointer; }
+  .btn:hover { background:var(--blue); border-color:var(--blue); } .btn.alt { background:#fff; color:var(--navy); } .btn.sm { padding:6px 12px; font-size:13px; }
+  .ver { display:inline-block; font-size:13px; font-weight:600; padding:4px 12px; border-radius:99px; background:#e5f6ec; color:var(--green); border:1px solid #bfe6cf; }
+  .bad { background:#fdeceb; border:1px solid #f1b9b5; color:var(--red); border-radius:12px; padding:12px 14px; font-size:14px; margin-top:12px; }
+  .note { background:#e8f3fd; border:1px solid #b9d6f2; border-radius:10px; padding:10px 14px; font-size:13px; margin:12px 0; }
+  .steps { list-style:none; padding:0; display:grid; gap:6px; margin-top:12px; } .steps li { padding:9px 14px; border-radius:10px; background:#fff; border:1px solid var(--line); opacity:.5; font-size:14px; }
+  .steps li.done { opacity:1; border-color:var(--green); color:var(--green); }
+  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .gal img { width:100%; height:120px; object-fit:cover; border-radius:10px; border:1px solid var(--line); }
+  .ans { color:var(--green); } [hidden] { display:none !important; } :focus-visible { outline:3px solid var(--teal); outline-offset:2px; }
+</style>
+</head>
+<body>
+<header><img src="logo.jpg" alt="TopperDisk"><b>TopperDisk · Mentor</b><button class="btn alt sm" id="logout">Logout</button></header>
+<div class="wrap">
+  <h1 id="hi">Welcome!</h1>
+  <p class="sub">Verify your achievement, then share notes, guidance and answers. Prototype with demo checks.</p>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-t="home" aria-selected="true">Home</button>
+    <button class="tab" role="tab" data-t="notes" aria-selected="false">Notes</button>
+    <button class="tab" role="tab" data-t="guide" aria-selected="false">Guidance</button>
+    <button class="tab" role="tab" data-t="qa" aria-selected="false">Q &amp; A</button>
+  </div>
+  <section id="home"></section><section id="notes" hidden></section><section id="guide" hidden></section><section id="qa" hidden></section>
+</div>
+
+<script>
+  // ---- Session check (prototype: not real authentication) ----
+  const uid = localStorage.getItem('td_msession');
+  const acct = JSON.parse(localStorage.getItem('td_mentor_accounts') || '[]').find(a => a.userId === uid);
+  if (!acct) location.replace('index.html#mlogin');
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  const KEY = 'td_mdata_' + uid, MK = 'm:' + uid;
+  const getD = () => JSON.parse(localStorage.getItem(KEY) || '{"verified":false,"notes":[],"guidance":[]}');
+  const setD = (d) => { try { localStorage.setItem(KEY, JSON.stringify(d)); return true; } catch { alert('Browser storage is full. Delete some notes first.'); return false; } };
+  $('#hi').textContent = 'Welcome, ' + acct.name + '!';
+
+  /* ---- Verification: DEMO checks only (file type, size, image resolution).
+     It cannot tell a real rank card from a fake one. To make it real, replace the body of
+     this function with a call to your backend, which calls an OCR/AI service. ---- */
+  async function verifyRankCard(file, details) {
+    await sleep(600);
+    const why = [];
+    if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) why.push('The file must be a PDF, JPG or PNG.');
+    if (file.size < 20 * 1024) why.push('The file is too small to be a readable rank card.');
+    if (file.size > 5 * 1024 * 1024) why.push('The file is larger than 5 MB.');
+    if (/^image\//.test(file.type)) {
+      const dim = await new Promise(res => { const i = new Image(); i.onload = () => res([i.width, i.height]); i.onerror = () => res(null); i.src = URL.createObjectURL(file); });
+      if (!dim) why.push('The image could not be opened.');
+      else if (dim[0] < 400 || dim[1] < 300) why.push('The image resolution is too low to read.');
+    }
+    return { ok: why.length === 0, reasons: why };
+  }
+
+  // ---- Home / verification ----
+  function showHome() {
+    const d = getD();
+    if (d.verified) {
+      $('#home').innerHTML = `<div class="card"><span class="ver">✓ VERIFIED MENTOR</span>
+        <h3 style="margin-top:10px">Your achievement has been verified.</h3>
+        <p>${esc(d.exam)} · ${esc(d.year)} · Rank ${esc(d.rank)} (as entered, demo check)</p>
+        <p style="margin-top:8px">You are now visible to students. Upload notes, share guidance and answer questions.</p></div>`;
+      return;
+    }
+    $('#home').innerHTML = `<div class="card"><h3>Verify your achievement</h3>
+      <p>Upload your rank card (PDF, JPG or PNG, up to 5 MB) and click Verify.</p>
+      <form class="f" id="vForm">
+        <input id="vx" required placeholder="Exam" value="${esc(acct.exam || '')}">
+        <div class="two"><input id="vy" required type="number" placeholder="Year" min="2000" max="2100"><input id="vr" required type="number" placeholder="Rank" min="1"></div>
+        <input id="vf" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+        <button class="btn">Upload &amp; Verify</button></form>
+      <ul class="steps" id="steps" hidden>${['Uploading','Document Analysis','Information Extraction','Verification'].map(s => `<li>${s}</li>`).join('')}</ul>
+      <div id="vres"></div>
+      <div class="note">Prototype: this runs simple file checks only. It does not use real AI and cannot confirm that a rank card is genuine.</div></div>`;
+  }
+
+  async function runVerify() {
+    const file = $('#vf').files[0], d = getD();
+    if (!file) return;
+    const li = [...document.querySelectorAll('#steps li')];
+    $('#steps').hidden = false; li.forEach(l => l.className = ''); $('#vres').innerHTML = '';
+    const r = await verifyRankCard(file, {});
+    for (const l of li) { await sleep(500); l.className = 'done'; }
+    if (r.ok) {
+      Object.assign(d, { verified: true, exam: $('#vx').value.trim(), year: $('#vy').value, rank: $('#vr').value });
+      if (setD(d)) { showHome(); lockCheck(); }
+    } else {
+      $('#vres').innerHTML = `<div class="bad"><b>Verification failed. Please upload a proper document.</b><br>${r.reasons.map(esc).join('<br>')}</div>`;
+    }
+  }
+
+  // ---- Locked until verified ----
+  const lock = () => `<div class="card"><h3>Verification required</h3><p>Please verify your rank card on the Home tab first.</p></div>`;
+  function lockCheck() { if (!getD().verified) { ['notes','guide','qa'].forEach(id => $('#' + id).innerHTML = lock()); return false; } showNotes(); showGuide(); showQA(); return true; }
+
+  // ---- Notes (images) ----
+  function resize(file) {
+    return new Promise(res => { const img = new Image(); img.onload = () => {
+      const k = Math.min(1, 900 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.7)); }; img.src = URL.createObjectURL(file); });
+  }
+  function showNotes() {
+    const d = getD();
+    $('#notes').innerHTML = `<div class="card"><h3>Upload notes</h3><form class="f" id="nForm">
+      <input id="nt" required placeholder="Title (e.g. Physics formulas)"><input id="nf" type="file" accept="image/*" multiple required>
+      <button class="btn">Upload Notes</button></form></div>
+      <div class="gal">${d.notes.map((n, i) => `<div class="card" style="padding:10px"><img src="${n.img}" alt=""><p style="margin:6px 0"><b>${esc(n.title)}</b></p><button class="btn alt sm" data-dn="${i}">Delete</button></div>`).join('')}</div>`;
+  }
+
+  // ---- Guidance ----
+  function showGuide() {
+    const d = getD();
+    $('#guide').innerHTML = `<div class="card"><h3>Share guidance</h3><form class="f" id="gForm">
+      <input id="gt" required placeholder="Title (e.g. How I planned my last month)"><textarea id="gx" rows="4" required placeholder="Your advice for aspirants"></textarea>
+      <button class="btn">Post Guidance</button></form></div>
+      ${d.guidance.map((g, i) => `<div class="card"><h3>${esc(g.title)}</h3><p>${esc(g.text)}</p><button class="btn alt sm" style="margin-top:8px" data-dg="${i}">Delete</button></div>`).join('')}`;
+  }
+
+  // ---- Q & A (questions come from the student dashboard in this browser) ----
+  const getQ = () => JSON.parse(localStorage.getItem('td_myq') || '[]');
+  function showQA() {
+    const all = getQ(), mine = all.map((q, i) => ({ ...q, i })).filter(q => q.mentor === MK);
+    $('#qa').innerHTML = `<div class="note">Students ask you from their dashboard (same browser in this demo). <button class="btn alt sm" data-sample="1">Add a sample question</button></div>` +
+      (mine.map(q => `<div class="card"><h3>${esc(q.q)}</h3>${q.a ? `<p class="ans">Your answer: ${esc(q.a)}</p>` : ''}
+        <form class="f" data-ans="${q.i}"><textarea rows="2" required placeholder="Type your answer">${esc(q.a || '')}</textarea><button class="btn sm">Submit Answer</button></form></div>`).join('') || '<p>No questions yet.</p>');
+  }
+
+  // ---- Events ----
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
+    ['home','notes','guide','qa'].forEach(id => $('#' + id).hidden = id !== b.dataset.t);
+    if (b.dataset.t === 'qa' && getD().verified) showQA();
+  });
+  document.addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target, d = getD();
+    if (f.id === 'vForm') runVerify();
+    if (f.id === 'nForm') { for (const file of f.querySelector('#nf').files) d.notes.push({ title: $('#nt').value.trim(), img: await resize(file) }); if (setD(d)) showNotes(); }
+    if (f.id === 'gForm') { d.guidance.push({ title: $('#gt').value.trim(), text: $('#gx').value.trim() }); setD(d); showGuide(); }
+    if (f.dataset.ans !== undefined) { const q = getQ(); q[f.dataset.ans].a = f.querySelector('textarea').value.trim(); localStorage.setItem('td_myq', JSON.stringify(q)); showQA(); }
+  });
+  document.addEventListener('click', (e) => {
+    const t = e.target, d = getD();
+    if (t.dataset.dn) { d.notes.splice(t.dataset.dn, 1); setD(d); showNotes(); }
+    if (t.dataset.dg) { d.guidance.splice(t.dataset.dg, 1); setD(d); showGuide(); }
+    if (t.dataset.sample) { const q = getQ(); q.push({ mentor: MK, q: 'How did you prepare for your exam?', a: '' }); localStorage.setItem('td_myq', JSON.stringify(q)); showQA(); }
+  });
+  $('#logout').onclick = () => { localStorage.removeItem('td_msession'); location.href = 'index.html'; };
+
+  showHome(); lockCheck();
+</script>
+</body>
+</html>
