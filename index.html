@@ -133,21 +133,37 @@
   }));
 
   // Student login
-  $('loginForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const msg = $('loginMsg'), userId = $('userId').value.trim();
-    msg.className = 'msg';
-    if (!userId || !$('password').value) { msg.textContent = 'Enter your User ID and password to log in.'; return; }
-    msg.textContent = '';
-    // TODO: send { userId, password, role: 'aspirant' } to your backend login API, then redirect to the student dashboard
-    console.log('Student login attempt:', userId);
-  });
+$('loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
 
-  $('googleBtn').addEventListener('click', () => {
-    // TODO: start Google Sign-In here (Firebase signInWithPopup or Google Identity Services), role: 'aspirant'
-    console.log('Google sign-in clicked');
-  });
+  const msg = $('loginMsg');
+  const userId = $('userId').value.trim();
+  const password = $('password').value;
 
+  msg.className = 'msg';
+
+  // Check fields
+  if (!userId || !password) {
+    msg.textContent = 'Enter your User ID and password to log in.';
+    return;
+  }$('googleBtn').addEventListener('click', () => {
+
+  // Demo Google login
+  const demoUser = 'Google Student';
+
+  localStorage.setItem('td_student', demoUser);
+
+  window.location.href = 'dashboard.html';
+});
+
+  // Save student login for the dashboard
+  localStorage.setItem('td_student', userId);
+
+  // Open student dashboard
+  window.location.href = 'dashboard.html';
+});
+
+ 
   // Mentor registration
   $('regForm').addEventListener('submit', (e) => {
     e.preventDefault();
