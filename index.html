@@ -165,21 +165,60 @@ $('loginForm').addEventListener('submit', (e) => {
 
  
   // Mentor registration
-  $('regForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const msg = $('regMsg');
-    msg.className = 'msg';
-    const data = { name: $('rName').value.trim(), email: $('rEmail').value.trim(), userId: $('rUser').value.trim(),
-                   exam: $('rExam').value.trim(), password: $('rPass').value };
-    if (!data.name || !data.email || !data.userId || !data.exam || !data.password) { msg.textContent = 'Please fill in every field.'; return; }
-    if (!/^\S+@\S+\.\S+$/.test(data.email)) { msg.textContent = 'Enter a valid email address.'; return; }
-    if (data.password.length < 8) { msg.textContent = 'Password must be at least 8 characters.'; return; }
-    if (data.password !== $('rPass2').value) { msg.textContent = 'Passwords do not match.'; return; }
-    msg.className = 'msg ok';
-    msg.textContent = 'Mentor account created (demo). Next: verify your rank card.';
-    // TODO: send { ...data, role: 'mentor' } to your backend register API, then redirect to the rank-card upload page
-    console.log('Mentor registration:', { ...data, password: undefined, role: 'mentor' });
-  });
+ $('regForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const name = $('rName').value.trim();
+  const email = $('rEmail').value.trim();
+  const userId = $('rUser').value.trim();
+  const exam = $('rExam').value.trim();
+  const password = $('rPass').value;
+  const confirmPassword = $('rPass2').value;
+
+  if (!name || !email || !userId || !exam || !password || !confirmPassword) {
+    alert('Please fill in all fields.');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    alert('Passwords do not match.');
+    return;
+  }
+
+  // Get existing mentor accounts
+  const accounts = JSON.parse(
+    localStorage.getItem('td_mentor_accounts') || '[]'
+  );
+
+  // Check duplicate User ID
+  if (accounts.some(a => a.userId === userId)) {
+    alert('This User ID already exists. Please choose another.');
+    return;
+  }
+
+  // Create mentor account
+  const mentor = {
+    name: name,
+    email: email,
+    userId: userId,
+    exam: exam,
+    password: password
+  };
+
+  accounts.push(mentor);
+
+  // Save mentor account
+  localStorage.setItem(
+    'td_mentor_accounts',
+    JSON.stringify(accounts)
+  );
+
+  // Start mentor session
+  localStorage.setItem('td_msession', userId);
+
+  // Open mentor home
+  window.location.href = 'mentor.html';
+});
 </script>
 </body>
 </html>
