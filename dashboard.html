@@ -9,12 +9,16 @@
   :root { --navy:#0b3a6e; --blue:#0a7ad0; --teal:#3fb3b3; --green:#1a9b55; --ink:#1c2b3a; --mut:#5d7080; --line:#d5e3ea; }
   * { box-sizing:border-box; margin:0; }
   body { min-height:100vh; font-family:"Poppins",system-ui,sans-serif; color:var(--ink);
-    background:#eaf3fa url("background.jpg") right bottom / cover no-repeat fixed; }
+    background:#eaf3fa; }
+  /* Blurred copy fills the page; the sharp, uncropped picture sits below the header */
+  body::before, body::after { content:""; position:fixed; left:0; right:0; bottom:0; z-index:-1; background:url("background.jpg") no-repeat; }
+  body::before { top:0; background-size:cover; background-position:center; filter:blur(28px); transform:scale(1.15); }
+  body::after { top:64px; background-size:contain; background-position:right bottom; }
   header { display:flex; align-items:center; gap:12px; padding:10px 5%; background:rgba(255,255,255,.88); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
   header img { height:44px; border-radius:50%; }
   header b { color:var(--navy); flex:1; }
   .out { border:1.5px solid var(--navy); background:#fff; color:var(--navy); padding:7px 16px; border-radius:10px; font:500 13px "Poppins"; cursor:pointer; }
-  .wrap { width:min(680px,100%); padding:28px 5% 60px; }
+  .wrap { width:min(640px,100%); padding:28px 5% 60px; }
   h1 { font-size:clamp(22px,4vw,30px); color:var(--navy); }
   .sub { color:var(--mut); font-size:14px; margin:4px 0 16px; }
   .tabs { display:flex; gap:6px; background:rgba(228,238,243,.9); padding:4px; border-radius:12px; margin-bottom:16px; }
@@ -34,9 +38,11 @@
   .banner { background:#e8f3fd; border:1px solid #b9d6f2; border-radius:12px; padding:10px 14px; font-size:14px; margin-bottom:14px; }
   select,textarea { width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:10px; font:14px "Poppins"; margin-bottom:10px; }
   .ans { color:var(--green); }
+  .tag { font-size:12px; background:#eef4f9; border:1px solid var(--line); border-radius:99px; padding:2px 10px; color:var(--navy); }
   [hidden] { display:none !important; }
   :focus-visible { outline:3px solid var(--teal); outline-offset:2px; }
-  @media(max-width:760px){ body { background-attachment:scroll; } .wrap { background:rgba(255,255,255,.55); } }
+  @media(min-width:900px){ .wrap { width:min(640px,46vw); } }
+  @media(max-width:899px){ .wrap { width:100%; background:rgba(255,255,255,.6); } body::after { opacity:.5; } }
 </style>
 </head>
 <body>
@@ -69,21 +75,47 @@
     { id:3, name:'Neha Gupta',   exam:'UPSC CSE',     year:2024, rank:'AIR 97',    qual:'Qualified UPSC Civil Services',                 subj:'Polity, Essay' },
     { id:4, name:'Rahul Singh',  exam:'GATE',         year:2025, rank:'AIR 63',    qual:'Qualified GATE (CSE), M.Tech student',          subj:'Algorithms, OS' }
   ];
+  // Resources: each belongs to one mentor (by = mentor id)
   const RES = [
-    { t:'Physics Formula Sheet', by:1, d:'One-page formulas for mechanics and electricity.' },
-    { t:'NEET 6-Month Study Plan', by:2, d:'Week-by-week plan with revision slots.' },
-    { t:'UPSC Answer-Writing Tips', by:3, d:'Structure, time limits and common mistakes.' },
-    { t:'GATE OS Previous-Year Questions', by:4, d:'Topic-wise questions with solutions.' }
+    { by:1, type:'Formula sheet', t:'Physics Formula Sheet', d:'One-page formulas for mechanics and electricity.' },
+    { by:1, type:'Study plan',    t:'JEE Advanced 3-Month Revision Plan', d:'Weekly revision targets with mock-test days.' },
+    { by:1, type:'PYQ',           t:'Mathematics PYQs: Calculus', d:'Previous-year calculus problems, grouped by topic.' },
+    { by:2, type:'Study plan',    t:'NEET 6-Month Study Plan', d:'Week-by-week plan with revision slots.' },
+    { by:2, type:'Checklist',     t:'NCERT Biology Revision Checklist', d:'Chapter-wise checklist of must-know diagrams and terms.' },
+    { by:2, type:'Notes',         t:'Chemistry Reactions Mind-Map', d:'Organic reactions summarised on two pages.' },
+    { by:3, type:'Exam tips',     t:'UPSC Answer-Writing Tips', d:'Structure, time limits and common mistakes.' },
+    { by:3, type:'Notes',         t:'Monthly Current Affairs Template', d:'A simple format to make short daily current-affairs notes.' },
+    { by:3, type:'Notes',         t:'Polity Quick Notes', d:'Articles, amendments and landmark cases at a glance.' },
+    { by:4, type:'PYQ',           t:'GATE OS Previous-Year Questions', d:'Topic-wise questions with solutions.' },
+    { by:4, type:'Formula sheet', t:'Algorithms Cheat Sheet', d:'Complexities, recurrences and standard techniques.' },
+    { by:4, type:'Study plan',    t:'GATE 90-Day Plan', d:'Topic order and test schedule for the last three months.' }
   ];
-  const SEED_Q = [{ mentor:1, q:'How did you prepare for Mathematics?', a:'Solve 20 problems daily and review every mistake.' }];
+  // Sample answered questions, each tied to a mentor
+  const SEED_Q = [
+    { mentor:1, q:'How did you prepare for Mathematics?', a:'Solve 20 problems daily and review every mistake.' },
+    { mentor:1, q:'How many hours did you study each day?', a:'About 6 focused hours, with one full rest day a week.' },
+    { mentor:2, q:'How did you revise Biology?', a:'NCERT line by line, three times, then diagram practice.' },
+    { mentor:2, q:'How many mock tests should I take?', a:'One every Sunday, and spend as long reviewing it as writing it.' },
+    { mentor:3, q:'How do I start answer writing?', a:'Write one answer a day from the first month, then get it reviewed.' },
+    { mentor:4, q:'Which topics matter most in GATE CSE?', a:'Algorithms, OS, DBMS and Computer Networks carry steady marks.' }
+  ];
 
   // ---- Helpers ----
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const mentor = (id) => MENTORS.find(m => m.id == id);
-  const getQs = () => JSON.parse(localStorage.getItem('td_questions') || JSON.stringify(SEED_Q));
-  const setQs = (q) => localStorage.setItem('td_questions', JSON.stringify(q));
+  const opts = (sel, all) => (all ? `<option value="0">All mentors</option>` : '') +
+    MENTORS.map(m => `<option value="${m.id}" ${m.id == sel ? 'selected' : ''}>${m.name} · ${m.exam}</option>`).join('');
+  // Only the student's own questions are stored (key td_myq). Older saves are migrated once.
+  if (!localStorage.getItem('td_myq')) {
+    const old = JSON.parse(localStorage.getItem('td_questions') || '[]');
+    localStorage.setItem('td_myq', JSON.stringify(old.filter(x => !SEED_Q.some(s => s.q === x.q))));
+  }
+  const getMine = () => JSON.parse(localStorage.getItem('td_myq'));
+  const setMine = (q) => localStorage.setItem('td_myq', JSON.stringify(q));
   let chosen = +(localStorage.getItem('td_mentor') || 0);
+  let qf = chosen || 1;   // mentor whose questions are shown
+  let rf = chosen;        // mentor whose resources are shown (0 = all)
 
   $('#hi').textContent = 'Welcome, ' + user + '!';
 
@@ -102,25 +134,30 @@
   }
 
   function showQA() {
-    const qs = getQs();
     $('#qa').innerHTML = `
-      ${chosen ? `<div class="banner">Your mentor: <b>${mentor(chosen).name}</b></div>` : ''}
       <form class="card" id="askForm">
-        <h3 style="margin-bottom:10px">Ask a question</h3>
-        <select id="qm">${MENTORS.map(m => `<option value="${m.id}" ${m.id == chosen ? 'selected' : ''}>${m.name} · ${m.exam}</option>`).join('')}</select>
+        <h3 style="margin-bottom:10px">Ask a mentor</h3>
+        <select id="qm">${opts(qf)}</select>
         <textarea id="qt" rows="3" required placeholder="Type your question"></textarea>
         <button class="btn">Post Question</button>
       </form>
-      ${qs.slice().reverse().map(x => `<div class="card"><h3>${esc(x.q)}</h3><p>Asked to ${mentor(x.mentor).name}</p>
-        <p class="${x.a ? 'ans' : ''}">${x.a ? 'Answer: ' + esc(x.a) : 'Waiting for the mentor to answer'}</p></div>`).join('')}`;
+      <div id="qlist"></div>`;
+    showQList();
+  }
+  function showQList() {
+    const list = getMine().filter(x => x.mentor == qf).concat(SEED_Q.filter(x => x.mentor == qf));
+    $('#qlist').innerHTML = `<h3 style="margin:4px 0 10px;color:var(--navy)">Questions for ${mentor(qf).name}</h3>` +
+      (list.map(x => `<div class="card"><h3>${esc(x.q)}</h3>
+        <p class="${x.a ? 'ans' : ''}">${x.a ? 'Answer: ' + esc(x.a) : 'Waiting for the mentor to answer'}</p></div>`).join('') || '<p>No questions yet.</p>');
   }
 
   function showRes() {
-    $('#res').innerHTML = RES.map((r, i) => `
-      <div class="card"><h3>${r.t}</h3>
-        <p>Shared by ${mentor(r.by).name} <span class="ver">✓ Verified</span></p>
+    const list = RES.filter(r => !rf || r.by == rf);
+    $('#res').innerHTML = `<div class="card"><h3 style="margin-bottom:10px">Resources from</h3><select id="rm">${opts(rf, true)}</select></div>` +
+      list.map((r) => `<div class="card"><h3>${r.t}</h3>
+        <p><span class="tag">${r.type}</span> · Shared by ${mentor(r.by).name} <span class="ver">✓ Verified</span></p>
         <p style="margin:6px 0 10px">${r.d}</p>
-        <button class="btn alt" data-dl="${i}">Download</button></div>`).join('');
+        <button class="btn alt" data-dl="${RES.indexOf(r)}">Download</button></div>`).join('');
   }
 
   // ---- Events ----
@@ -128,24 +165,33 @@
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === b));
     ['mentors', 'qa', 'res'].forEach(id => $('#' + id).hidden = id !== b.dataset.t);
     if (b.dataset.t === 'qa') showQA();
+    if (b.dataset.t === 'res') showRes();
   });
 
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t.dataset.pick) { chosen = +t.dataset.pick; localStorage.setItem('td_mentor', chosen); showMentors(); }
+    if (t.dataset.pick) {
+      chosen = qf = rf = +t.dataset.pick;
+      localStorage.setItem('td_mentor', chosen); showMentors();
+    }
     if (t.dataset.dl) {
       const r = RES[t.dataset.dl], a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([r.t + '\n\n' + r.d + '\n\n(Demo file)'], { type:'text/plain' }));
+      a.href = URL.createObjectURL(new Blob([r.t + '\nShared by ' + mentor(r.by).name + '\n\n' + r.d + '\n\n(Demo file)'], { type:'text/plain' }));
       a.download = r.t.replace(/\W+/g, '_') + '.txt'; a.click();
     }
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'qm') { qf = +e.target.value; showQList(); }
+    if (e.target.id === 'rm') { rf = +e.target.value; showRes(); }
   });
 
   document.addEventListener('submit', (e) => {
     if (e.target.id !== 'askForm') return;
     e.preventDefault();
-    const qs = getQs();
-    qs.push({ mentor: +$('#qm').value, q: $('#qt').value.trim(), a: '' });
-    setQs(qs); showQA();
+    const mine = getMine();
+    mine.push({ mentor: qf, q: $('#qt').value.trim(), a: '' });
+    setMine(mine); $('#qt').value = ''; showQList();
   });
 
   $('#logout').onclick = () => { localStorage.removeItem('td_student'); location.href = 'index.html'; };
