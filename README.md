@@ -179,5 +179,8 @@ TopperDisk follows a simple user-centered architecture connecting aspirants, men
 ## 💻 Prototype
 
 TopperDisk is currently developed as a functional web prototype that demonstrates the core user experience for both aspirants and mentors.
-![prototype-topperdisk](student-login.png)
+![Student-Login](prtotype-topperdisk/student-login.png)
+![Student Dashboard](prtotype-topperdisk/student-dashboard.png)
+![Mentor Registration](prototype-topperdisk/mentor-register.png)
+![Mentor Dashboard](prototype-topperdisk/mentor-dashboard.png)
 
