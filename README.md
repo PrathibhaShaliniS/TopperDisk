@@ -177,7 +177,7 @@ TopperDisk follows a simple user-centered architecture connecting aspirants, men
 - **Backend & Database** – Planned for secure user accounts, mentor profiles, verification records, and communication.
 
 ## 💻 Prototype
-
+```
 ![Student Login](./
 prototype-topperdisk/student-login.png)
 
@@ -190,3 +190,4 @@ prototype-topperdisk/mentor-register.png)
 ![Mentor Dashboard](./
 prototype-topperdisk/mentor-dashboard.png)
 
+```
